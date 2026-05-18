@@ -2,6 +2,26 @@
 
 This folder is the classroom for the project.
 
+Slice GPT Lab is a small educational project for understanding how a GPT-like model works internally.
+
+It does not try to build a powerful assistant like ChatGPT. Instead, it builds a tiny local version that is simple enough to inspect and study. The model is trained with artificial English phrases about a fictional pizzeria called **The Slice Lab**.
+
+The central idea is next-token prediction: given previous text, the model tries to predict what comes next. In this project, tokens are characters, which makes the mechanics easier to see.
+
+The project shows the full learning path:
+
+1. read a text dataset
+2. turn text into token IDs
+3. build training examples for next-token prediction
+4. run the token IDs through a tiny Transformer
+5. calculate prediction error
+6. update model weights with backpropagation
+7. save a `.pt` checkpoint
+8. reload the checkpoint for inference
+9. expose local generation through an OpenAI-style API
+
+The main value of the project is educational. It makes tokenization, embeddings, attention, loss, training, checkpoints, and inference visible in a small codebase.
+
 Course site:
 
 ```txt

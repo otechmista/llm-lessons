@@ -171,20 +171,45 @@ Start here:
 
 Each lesson links to the previous and next topic in a `Course Thread` section.
 
-For source-code study, read:
+## Documentation Navigation
 
-- [docs/14_file_by_file_lessons.md](docs/14_file_by_file_lessons.md)
+Main documentation:
 
-For visual flow study, read:
+| Document | Use it for |
+|---|---|
+| [docs/README.md](docs/README.md) | Full documentation index |
+| [docs/PROJECT_IDENTITY.md](docs/PROJECT_IDENTITY.md) | Project name, purpose, and learning promise |
+| [docs/00_course_guide.md](docs/00_course_guide.md) | Recommended study order and commands |
+| [docs/14_file_by_file_lessons.md](docs/14_file_by_file_lessons.md) | Source-code walkthrough by file |
+| [docs/diagrams/README.md](docs/diagrams/README.md) | Visual diagrams for training, inference, attention, context, and checkpoints |
 
-- [docs/diagrams/README.md](docs/diagrams/README.md)
+Concept lessons:
 
-For architecture and implementation contracts, read:
+| Lesson | Topic |
+|---|---|
+| [docs/01_introduction.md](docs/01_introduction.md) | Project overview and pizzeria domain |
+| [docs/02_how_llms_work.md](docs/02_how_llms_work.md) | Full GPT-like flow |
+| [docs/15_simple_context_model.md](docs/15_simple_context_model.md) | Chat messages, context, tokens, and context window |
+| [docs/03_tokenization.md](docs/03_tokenization.md) | Text to token IDs |
+| [docs/04_embeddings.md](docs/04_embeddings.md) | Token IDs to vectors |
+| [docs/05_self_attention.md](docs/05_self_attention.md) | Causal self-attention |
+| [docs/06_transformer_blocks.md](docs/06_transformer_blocks.md) | Transformer block structure |
+| [docs/07_forward_pass.md](docs/07_forward_pass.md) | Model input to logits |
+| [docs/08_loss_and_backpropagation.md](docs/08_loss_and_backpropagation.md) | Loss, gradients, and learning |
+| [docs/09_training_loop.md](docs/09_training_loop.md) | Training orchestration |
+| [docs/11_checkpoint_and_weights.md](docs/11_checkpoint_and_weights.md) | Saving and loading model state |
+| [docs/10_inference.md](docs/10_inference.md) | Autoregressive generation |
+| [docs/12_openai_api_layer.md](docs/12_openai_api_layer.md) | OpenAI-style local API |
+| [docs/13_limitations_of_the_model.md](docs/13_limitations_of_the_model.md) | Limits of this mini model |
 
-- [docs/contexts/01_CONTEXT_VIEW.md](docs/contexts/01_CONTEXT_VIEW.md)
-- [docs/contexts/02_CONTAINER_VIEW.md](docs/contexts/02_CONTAINER_VIEW.md)
-- [docs/contexts/03_COMPONENT_VIEW.md](docs/contexts/03_COMPONENT_VIEW.md)
-- [docs/contexts/04_CODE_VIEW.md](docs/contexts/04_CODE_VIEW.md)
+Architecture and contracts:
+
+| View | Use it for |
+|---|---|
+| [docs/contexts/01_CONTEXT_VIEW.md](docs/contexts/01_CONTEXT_VIEW.md) | Problem, goals, boundaries, and business rules |
+| [docs/contexts/02_CONTAINER_VIEW.md](docs/contexts/02_CONTAINER_VIEW.md) | Runtime containers and data flow |
+| [docs/contexts/03_COMPONENT_VIEW.md](docs/contexts/03_COMPONENT_VIEW.md) | Internal components and responsibilities |
+| [docs/contexts/04_CODE_VIEW.md](docs/contexts/04_CODE_VIEW.md) | Implementation contracts, commands, and code rules |
 
 ## Repository Structure
 
