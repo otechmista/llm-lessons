@@ -10,7 +10,7 @@ The Mermaid diagrams for this course are embedded directly in their matching les
 | Checkpoint save and load | [11_checkpoint_and_weights.md](../11_checkpoint_and_weights.md) |
 | Inference loop | [10_inference.md](../10_inference.md) |
 
-The raw `.mf` source files are kept here for reference. If your editor doesn't render Mermaid automatically, paste a diagram's content into [mermaid.live](https://mermaid.live).
+The raw source files are kept here for reference. If your editor doesn't render Mermaid automatically, paste a diagram's content into [mermaid.live](https://mermaid.live).
 
 <!-- COURSE_THREAD_START -->
 ## Course Thread
