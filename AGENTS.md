@@ -50,7 +50,7 @@ Regras:
 - Frontend: não aplicável no momento.
 - Backend: Python com FastAPI para camada HTTP compatível com OpenAI.
 - Banco de dados: não aplicável; persistência local em arquivos.
-- Infra/deploy: execução local.
+- Infra/deploy: execução local e deploy da API em Kubernetes via GitHub Actions.
 - Filas/jobs/workers: não aplicável.
 - Machine learning: PyTorch.
 - Testes: pytest.
@@ -73,6 +73,9 @@ Regras:
 | `docs/README.md` | Índice e rota de estudo | Capa do curso, promessa didática e links para todos os documentos |
 | `docs/contexts/` | Views de contexto, container, componente e código | Fonte de decisão arquitetural por fase |
 | `checkpoints/llm_lessons.pt` | Checkpoint treinado do modelo | Artefato pequeno de estudo; deve entrar no versionamento para a API funcionar após clone |
+| `Dockerfile` | Imagem da API | Empacota código, dependências e checkpoint para execução no Kubernetes |
+| `k8s/llm-lessons-api.yaml` | Manifest Kubernetes da API | Expõe a API em `62.171.156.26:8000` e encaminha para o container `8000` |
+| `.github/workflows/deploy-k8s.yml` | Pipeline de deploy | Testa, publica imagem no GHCR e aplica o manifest no host Kubernetes via SSH |
 | `requirements.txt` | Dependências Python | Não adicionar dependências fora da lista aprovada sem decisão |
 | `.gitignore` | Arquivos ignorados | Não deve ignorar `checkpoints/llm_lessons.pt`; outros artefatos temporários continuam fora do versionamento |
 
@@ -90,6 +93,8 @@ Regras:
 | Inferência via Make | `make infer` |
 | API | `uvicorn app.api:app --reload` |
 | API via Make | `make api` |
+| Listar modelos da API | `GET /v1/models` |
+| Chat completion | `POST /v1/chat/completions` |
 | Testes | `python -m pytest` |
 | Testes via Make | `make test` |
 | Lint/check | `python -m ruff check . && python -m black --check app` |
@@ -97,13 +102,15 @@ Regras:
 | Format | `python -m black app` |
 | Format via Make | `make format` |
 | Build | `none` |
-| Deploy | `none` |
+| Build Docker | `docker build -t llm-lessons-api .` |
+| Deploy | GitHub Actions: `Deploy API to Kubernetes` |
 
 Notas:
 
 - Sistema operacional esperado: qualquer sistema com Python e pip.
 - Variáveis de ambiente obrigatórias: nenhuma no estado atual.
 - Serviços locais necessários: nenhum.
+- Segredos de deploy no GitHub Actions: `K8S_SSH_USER` e `K8S_SSH_PRIVATE_KEY`.
 
 ---
 
@@ -257,6 +264,7 @@ Cobertura esperada:
 | Documentar o projeto como aula arquivo por arquivo | O projeto é educacional e deve explicar como o modelo funciona | 2026-05-18 / documentação de estudo |
 | Nomear o projeto como LLM Lessons | Nome mais autoral e didático; mantém o domínio fictício Slice Pizza e comunica laboratório de estudo | 2026-05-18 / identidade do projeto |
 | Versionar `checkpoints/llm_lessons.pt` | O site/API de estudo deve funcionar após clone sem exigir treino local antes do primeiro teste | 2026-05-21 / decisão de distribuição do modelo gerado |
+| Adicionar deploy Kubernetes para a API | Permitir publicar a API em `62.171.156.26:8000` usando imagem GHCR e apply remoto via SSH | 2026-05-21 / deploy GitHub Actions |
 
 ---
 

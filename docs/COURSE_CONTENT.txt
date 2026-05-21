@@ -1,0 +1,1939 @@
+﻿=== INDEX ===
+
+LLM Lessons
+A hands-on course for understanding how GPT-style language models work
+Have you ever wondered how ChatGPT actually generates text? Not the marketing explanation — the real one?
+This project shows you. Step by step, in real code you can run, modify, and break on purpose.
+LLM Lessons
+is a tiny AI trained to talk about a fictional pizzeria called Slice Pizza. The pizzeria is just a prop to keep things concrete. The real subject is the model: how it reads text, learns from it, and generates answers one character at a time — the same way every major language model works, at a scale small enough to understand completely.
+This is not a product. It is a classroom.
+Who This Is For
+Anyone curious about how AI language models work. No machine learning background required — just curiosity and willingness to run some Python.
+If you've ever asked "how does ChatGPT produce text?", this project gives you the real answer.
+What You'll Be Able to Explain After This
+By the end of the course, you'll understand every step in this chain:
+your question
+  → split into characters (tokenization)
+  → each character becomes a number (token IDs)
+  → numbers become vectors (embeddings)
+  → position is added to each vector
+  → tokens look at each other (attention)
+  → each token transforms its own info (feed-forward)
+  → a score is produced for every possible next character (logits)
+  → one character is picked
+  → it's added to the sequence
+  → repeat until the answer is done
+You'll also understand how the model learned to do all of that in the first place — from a simple training loop that runs on your laptop in minutes.
+How to Set Up
+Open the visual documentation site:
+docs/index.html
+pip install -r requirements.txt
+Train the model:
+python app/train.py
+Ask it a question:
+python app/infer.py --prompt "What pizza do you recommend?"
+Start the web API:
+uvicorn app.api:app --reload
+Run all tests:
+python -m pytest
+The Book
+This course is structured as a sequence of lessons, each building on the last. Start at the top and follow the thread.
+Part 0: Orientation
+Document
+What You'll Learn
+1
+Course Guide
+Commands, study order, and the key idea
+2
+Introduction
+What we're building and why
+Part 1: The Big Picture
+Document
+What You'll Learn
+3
+How LLMs Work
+The full GPT-like pipeline, from text to prediction
+4
+Simple Context Model
+How a chat conversation becomes model input
+Part 2: Inside the Model
+Document
+What You'll Learn
+5
+Tokenization
+How text becomes numbers
+6
+Embeddings
+How numbers become vectors with meaning
+7
+Self-Attention
+How tokens look back at previous context
+8
+Transformer Blocks
+Attention + feed-forward, the repeating unit
+9
+Forward Pass
+How the model produces a prediction
+Part 3: Learning
+Document
+What You'll Learn
+10
+Loss and Backpropagation
+How the model measures and learns from mistakes
+11
+Training Loop
+The complete training process
+12
+Checkpoint and Weights
+How trained knowledge is saved to disk
+Part 4: Using the Model
+Document
+What You'll Learn
+13
+Inference
+How the model generates answers, one character at a time
+14
+OpenAI API Layer
+How to expose the model as a web API
+15
+Limitations of the Model
+Why this isn't ChatGPT, and what that means
+Part 5: The Code
+Document
+What You'll Learn
+16
+File-by-File Lessons
+Every source file explained with questions to answer
+Bonus: Young Builders
+Document
+What You'll Learn
+17
+Course Index
+A minimalist self-contained HTML course reader
+18
+AI for Young Builders
+A playful classroom guide for children and teenagers
+19
+AI for Young Builders
+The young builders guide as a standalone minimalist HTML document
+Visual Diagrams
+If you prefer to see the flows visually:
+docs/diagrams/README.html
+The Core Idea
+The model learns one skill, repeated thousands of times:
+Given the previous characters, predict the next character.
+That same idea powers every GPT-style model — ChatGPT, Claude, Gemini. Here it's small enough to see clearly.
+
+=== 00 COURSE GUIDE ===
+
+Course Guide
+Welcome to
+LLM Lessons
+— a hands-on mini classroom where you'll build and understand a tiny version of the same technology behind ChatGPT.
+You won't just read about AI. You'll train a real model, watch it learn, and talk to it.
+What This Project Does
+There is a fictional pizzeria called
+Slice Pizza
+. We trained a small AI on pizza conversations. When you ask it "What pizza do you recommend?", the model generates the answer character by character — just like a real language model does. No cheating, no hardcoded answers.
+How to Study
+Follow this order. Each step builds on the last:
+Read this guide (you're here).
+Introduction
+— what we're building and why.
+How LLMs Work
+— the big picture of how AI language models work.
+Simple Context Model
+— how a conversation becomes model input.
+Tokenization
+through
+Limitations of the Model
+— one concept at a time.
+File-by-File Lessons
+— connect every concept back to real code.
+Open the files in
+app/
+and explore.
+Run the tests, train the model, ask it questions.
+Commands
+Install dependencies:
+pip install -r requirements.txt
+Train the model:
+python app/train.py
+Ask the trained model a pizza question:
+python app/infer.py --prompt "What pizza do you recommend?"
+Ask it something it wasn't trained on:
+python app/infer.py --prompt "What is the capital of France?"
+See the full raw generated conversation:
+python app/infer.py --raw-model --prompt "What pizza do you recommend?"
+Start the API server:
+uvicorn app.api:app --reload
+Run all tests:
+python -m pytest
+The Files and What They Teach
+File
+What you'll learn
+app/dataset.txt
+The training examples — the pizzeria conversations
+app/dataset.py
+How the model loads its training material
+app/context.py
+How a chat conversation becomes a single text the model reads
+app/tokenizer.py
+How text becomes numbers
+app/batch.py
+How training examples are created from text
+app/embedding.py
+How numbers become learned vectors
+app/position.py
+How the model knows word order
+app/attention.py
+How the model pays attention to previous words
+app/feedforward.py
+The thinking layer inside each transformer block
+app/block.py
+One full transformer block (attention + thinking)
+app/model.py
+The whole model — all pieces together
+app/loss.py
+How the model measures its own mistakes
+app/sampling.py
+How the model picks the next character
+app/checkpoint.py
+How trained knowledge is saved and reloaded
+app/train.py
+The training loop — where learning actually happens
+app/infer.py
+How the model generates answers
+app/api.py
+The web API — talk to the model over HTTP
+app/schemas.py
+The shapes of API requests and responses
+The Core Idea
+The model learns one simple skill, over and over:
+Given the previous characters, predict the next character.
+Training example:
+input:  Customer: What piz
+target: |user|> What pizz
+The target is just the input shifted one character to the right. This simple trick is the same idea behind every GPT-style model — just at a tiny scale.
+
+=== 01 INTRODUCTION ===
+
+Introduction
+What Are We Actually Building?
+You've probably heard of ChatGPT. It's impressive — it can write essays, answer questions, explain code. But how does it work?
+The honest answer is: it learned to predict text. Given some words, it guesses what word comes next. It does this so well, so fast, across so much knowledge, that the result feels like thinking.
+LLM Lessons
+is a tiny version of that same idea.
+We're not trying to build the next ChatGPT. We're building something small enough to understand completely — a model you can train in minutes on your own computer, then watch it generate answers character by character.
+The Pizzeria Setting
+To keep things concrete, we trained the model on a fictional pizzeria called
+Slice Pizza
+.
+The training data is a set of simple English conversations:
+Customer:
+What pizza do you recommend?
+Assistant:
+I recommend the Margherita pizza.
+
+The model reads thousands of these characters and learns to continue them. When you ask "What pizza do you recommend?", it generates the answer — not by looking up a hardcoded string, but by predicting one character at a time.
+What You Should Pay Attention To
+When you run training, you'll see a number called
+loss
+printed each step:
+step=10  loss=3.1204
+step=20  loss=2.6870
+step=30  loss=2.4103
+Loss going down = the model is getting better at predicting characters from this dataset.
+But here's the important part:
+lower loss does not mean the model became smart.
+It means it got better at repeating patterns from a tiny dataset. ChatGPT's quality comes from training on billions of examples for weeks. Our model trains for minutes. That gap matters.
+The point of this project is to understand the
+mechanics
+, not to produce impressive outputs.
+The Invisible Steps
+When you send a question to ChatGPT, a lot happens in milliseconds. This project makes those steps visible:
+Text becomes numbers (tokenization)
+Numbers become vectors (embeddings)
+Vectors pick up position information
+Attention connects each word to earlier words
+A score is produced for every possible next word (logits)
+The model picks one word and repeats
+The answer arrives character by character
+By the end of this course, you'll understand every one of these steps.
+
+=== 02 HOW LLMS WORK ===
+
+How LLMs Work
+LLM stands for
+Large Language Model
+. ChatGPT, Gemini, Claude — they're all LLMs. Despite the fancy name, they all learned one humble skill:
+Given the previous words, predict the next word.
+That's it. No secret magic. Just that task, done millions of times, on enormous amounts of text.
+A Simple Analogy
+Imagine you're texting with a friend who finishes your sentences. You type:
+I'd like a large Margherita pi...
+Your friend guesses "pizza" because they've seen you say this before. An LLM does the same thing — but it has "seen" billions of sentences and learned all sorts of patterns from them.
+The Training Pipeline
+Here's what happens when the model learns:
+text from dataset
+  → split into tokens (characters, in our case)
+  → convert tokens to IDs (numbers)
+  → group into batches
+  → transform into embeddings (number vectors)
+  → add position information
+  → run through transformer blocks (attention + thinking)
+  → produce a score for every possible next token (logits)
+  → compare to the real next token → calculate the loss (how wrong was the guess?)
+  → backpropagation → adjust the weights slightly
+  → repeat thousands of times
+Each step of this pipeline has its own file in this project. You'll understand all of them.
+The Inference Pipeline
+When the model answers a question, there's no more learning — just predicting:
+your prompt
+  → convert to token IDs
+  → run through the model
+  → produce scores for the next token
+  → pick one token (based on those scores)
+  → add it to the prompt
+  → repeat until done
+The model generates one character at a time, feeding each result back into itself. That's called
+autoregressive
+generation.
+What Are Logits?
+When the model processes a sequence, it produces a number for every possible next character. These numbers are called
+logits
+.
+Our model knows 54 different characters. So after reading "What piz", it produces 54 scores like:
+'z' → 8.2   (high! makes sense after "piz")
+'a' → 3.1
+'x' → 0.1   (very unlikely)
+...
+These scores get turned into probabilities, and the model picks one character. That character is added to the sequence, and the process repeats.
+Why the Output Can Be Strange
+Our model is tiny. It was trained for a few minutes on a small dataset. Real LLMs are trained for weeks on billions of examples, on racks of specialized hardware.
+If our model produces weird text, that's not a bug — it's the lesson.
+Architecture alone doesn't create quality.
+Scale, data, and training time matter enormously.
+To get better output from this model, you could:
+Add more training examples to
+app/dataset.txt
+Train for more steps
+Make the model bigger
+Lower the temperature (makes output less random)
+But the goal here isn't impressive output. It's understanding how the machine works.
+
+=== 15 SIMPLE CONTEXT MODEL ===
+
+How a Conversation Becomes Model Input
+Before the model can do anything, it needs to read your question. But here's the catch: the model doesn't understand "questions" or "conversations." It only understands
+a sequence of numbers
+.
+So how does a chat conversation become a number sequence? That's what this lesson is about.
+The Model Doesn't See a Chat — It Sees a Blob of Text
+When you use ChatGPT, you see a nice chat interface: your message on the right, the AI's reply on the left. Behind the scenes, all of that gets squashed into a single flat string of text, with special markers to separate the parts:
+Customer:
+What pizza do you recommend?
+Assistant:
+The model reads this whole string and continues it. The assistant marker at the end is a hint: "now it's your turn to respond."
+This formatting is handled by
+app/context.py
+.
+Why the Format Has to Match the Training Data
+Look at
+app/dataset.txt
+. Every training example uses the same markers:
+Customer:
+What pizza do you recommend?
+Assistant:
+I recommend the Margherita pizza.
+
+The model learned that text after
+Assistant:
+is the kind of thing assistants say. So when inference puts
+Assistant:
+at the end of your prompt, the model naturally continues with assistant-style text.
+If training used one format and inference used a different format, the model would be confused. It's like teaching someone to respond to "Marco!" with "Polo!" — then shouting "Hey!" and wondering why they don't respond.
+What Is a Token?
+Before the text reaches the model, the tokenizer splits it into small pieces called
+tokens
+. In this project, each character is one token:
+"pizza" → ['p', 'i', 'z', 'z', 'a']
+Then each character gets an integer ID from the vocabulary:
+['p', 'i', 'z', 'z', 'a'] → [32, 17, 51, 51, 8]
+Now the model can process numbers.
+In real GPT models, tokens are usually small word-pieces (like "piz" and "za"), not single characters. That's more efficient, but harder to understand. We use characters to make every step visible.
+What Is a Context Window?
+The model can't look at infinite history. It has a memory limit called the
+context window
+.
+In this project,
+block_size = 64
+— meaning the model sees at most 64 characters at a time.
+This is a long conversation that went on for a while...
+                                        ^^^^^^^^^^^^^^
+                                        model only sees this part
+When a conversation gets too long, the oldest parts get cut off. The model always sees the most recent text.
+The Full Path: Chat → Tokens
+flowchart LR
+    A["Chat messages"] --> B["context.py"]
+    B --> C["Serialized context"]
+    C --> D["tokenizer.py"]
+    D --> E["Character token ids"]
+    E --> F["Context window<br/>latest block_size tokens"]
+    F --> G["MiniGPT"]
+    G --> H["Next token"]
+
+    C1["&lt;|user|&gt;<br/>hi<br/>&lt;|assistant|&gt;"] -. example .-> C
+    E1["[12, 44, 51, ...]"] -. example .-> E
+
+    classDef text fill:#e8f3ff,stroke:#2868a8,color:#10233f;
+    classDef token fill:#fff4dd,stroke:#a86a00,color:#3a2500;
+    classDef model fill:#f3edff,stroke:#7046aa,color:#24163d;
+
+    class A,B,C,C1 text;
+    class D,E,E1,F,H token;
+    class G model;
+Try It Yourself
+Open
+app/context.py
+and find the
+build_chat_context
+function. Then answer these questions:
+What markers does it use to separate the user and assistant?
+Why does the context always end with
+Assistant:
+?
+What would break if inference used
+User:
+instead of
+Customer:
+?
+Why does a context window need a maximum size?
+Mini Summary
+The model doesn't understand conversations. It understands sequences of numbers. Every message, every role, every line break gets flattened into one long string, then converted to token IDs, then fed into the model.
+The structure isn't magic — it's a pattern the model learned from training data.
+
+=== 03 TOKENIZATION ===
+
+Tokenization: Turning Text Into Numbers
+Neural networks can't read. They do math. So before any text reaches the model, it has to become numbers.
+Tokenization
+is that conversion step.
+What Is a Token?
+A token is the smallest unit of text the model works with.
+In this project, every token is a single character:
+"pizza" → ['p', 'i', 'z', 'z', 'a']
+Each character gets a unique integer ID:
+['p', 'i', 'z', 'z', 'a'] → [32, 17, 51, 51, 8]
+The mapping (which character gets which number) is built automatically from
+app/dataset.txt
+. Every unique character in the training data gets added to the vocabulary.
+Where This Lives
+app/tokenizer.py
+Building the Vocabulary
+The tokenizer reads all the text in the dataset and collects every unique character. If the dataset contains
+a-z
+, spaces, punctuation, and the special markers like
+Customer:
+, all of those become vocabulary entries.
+vocabulary: {' ': 0, '!': 1, ... 'a': 8, 'b': 9, ... 'z': 51, ...}
+This gives us two lookup tables:
+stoi
+: string to integer, e.g.
+'a' → 8
+itos
+: integer to string, e.g.
+8 → 'a'
+The
+encode
+function converts text → IDs. The
+decode
+function converts IDs → text.
+What Happens If You Use an Unknown Character?
+If you type an emoji or an accented letter that wasn't in the training dataset, the tokenizer has no ID for it. It can't encode it. The inference code handles this by replacing unknown characters with spaces.
+This is why the dataset matters. The model can only work with characters it has seen before.
+Real GPT Models Do This Differently
+ChatGPT doesn't use character-level tokens. It uses a technique called
+BPE (Byte Pair Encoding)
+that creates tokens from common chunks of text:
+"pizza" → ["piz", "za"]   (just 2 tokens instead of 5)
+This is more efficient because shorter sequences = less memory and faster processing. But it's harder to understand. We use characters because every step is visible — you always know exactly what's happening.
+Try It
+Open a Python shell and try:
+from app.tokenizer import CharacterTokenizer
+
+tokenizer = CharacterTokenizer.from_text("hello world")
+ids = tokenizer.encode("hello")
+print(ids)
+print(tokenizer.decode(ids))
+You'll see the round-trip: text → numbers → text.
+What You Should Be Able to Explain
+Why we need tokenization at all
+Why adding a new character to the dataset changes the vocabulary
+Why the tokenizer rejects characters it hasn't seen
+How character tokenization differs from subword tokenization
+
+=== 04 EMBEDDINGS ===
+
+Embeddings: Giving Numbers Meaning
+After tokenization, we have a list of IDs like
+[32, 17, 51, 51, 8]
+. But these numbers are just labels. The ID
+32
+for
+'p'
+isn't mathematically related to
+33
+for
+'q'
+in any meaningful way.
+The model needs something richer than labels. It needs
+vectors
+— lists of numbers that can actually represent relationships between tokens.
+That's what embeddings do.
+The Idea
+An embedding turns each token ID into a vector of learned numbers:
+token ID 32 ('p') → [0.12, -0.44, 0.31, 0.09, ...]
+token ID 17 ('i') → [-0.73, 0.21, 0.88, -0.15, ...]
+At the start of training, these vectors are random. Over time, backpropagation adjusts them until similar tokens have similar vectors, and the vectors become useful for prediction.
+Where This Lives
+app/embedding.py
+The Lookup Table Analogy
+Think of the embedding table as a giant spreadsheet:
+Token ID
+Dim 1
+Dim 2
+Dim 3
+...
+0
+0.12
+-0.44
+0.31
+...
+1
+-0.73
+0.21
+0.88
+...
+2
+0.04
+0.67
+-0.22
+...
+When the model sees token ID
+17
+, it looks up row 17 and gets that token's vector. That vector is what flows through the rest of the network.
+What Shape Does This Produce?
+If we process a batch of text sequences:
+batch size: 16   (process 16 examples at once)
+context length: 64   (each example is 64 tokens long)
+embedding dimension: 48   (each token becomes a 48-number vector)
+Then the output of the embedding layer has shape:
+[16, 64, 48]
+That means: 16 sequences, each with 64 tokens, each token described by 48 numbers.
+Why Embeddings Are Trainable
+The embedding values start random. But because they're parameters, backpropagation updates them during training — just like any other weight in the network.
+After enough training,
+'z'
+and
+'z'
+will have very similar vectors (they're the same character). Related characters like
+'a'
+through
+'z'
+will develop internal patterns. The model learns what makes each character useful for predicting the next one.
+What You Should Be Able to Explain
+Why token IDs alone aren't enough for a neural network
+What an embedding vector is
+Why embedding vectors are learned, not predefined
+What the output shape
+[batch, time, embedding_dim]
+means
+
+=== 05 SELF ATTENTION ===
+
+Self-Attention: How the Model Looks Back
+Predicting the next character requires context. You can't predict what comes after "The Slice L" without knowing what came before.
+Self-attention
+is the mechanism that lets each position in a sequence look back at earlier positions and decide which ones are relevant.
+Where This Lives
+app/attention.py
+A Simple Analogy
+Imagine you're reading a novel and you reach the word "it". You need to figure out what "it" refers to. So you glance back at earlier sentences to find the relevant noun.
+Self-attention does the same thing for tokens. Each token asks: "which earlier tokens should I pay attention to right now?" Then it collects information from those tokens.
+The Three Projections: Query, Key, Value
+Every token creates three vectors from its embedding:
+Query:
+what this token is looking for
+Key:
+what this token has to offer others
+Value:
+the actual information this token will share if chosen
+The match between a Query and a Key produces a score. High score = pay more attention. Then the model collects Value vectors weighted by those scores.
+scores = query × key  (how much does this token care about that one?)
+weights = softmax(scores)  (turn scores into percentages that sum to 1)
+output = weights × value  (collect information proportionally)
+The Causal Mask: No Peeking at the Future
+Here's a tricky part. During training, the model sees the entire sequence at once — including the correct next characters. Without protection, it could cheat by looking ahead.
+To prevent this, we apply a
+causal mask
+. It blocks attention to future positions:
+Position 0 can see: [0]
+Position 1 can see: [0, 1]
+Position 2 can see: [0, 1, 2]
+Position 3 can see: [0, 1, 2, 3]
+The mask looks like a triangle:
+✓ ✗ ✗ ✗
+✓ ✓ ✗ ✗
+✓ ✓ ✓ ✗
+✓ ✓ ✓ ✓
+Each row is a token. Each column is a past token it can see. The
+✗
+positions are zeroed out before softmax.
+This makes the model honest. It has to predict the next token using only what it could have known before.
+Multiple Heads
+Instead of running attention once, the model runs it several times in parallel with different projections. Each "head" can learn to attend to different kinds of relationships:
+one head might focus on nearby characters
+another might focus on repeated patterns
+another might track special markers like
+Assistant:
+In this project:
+embedding_dim = 48
+num_heads     = 4
+head_dim      = 12   (48 ÷ 4)
+The results from all heads are combined into one output.
+Diagram
+flowchart TD
+    A["hidden states<br/>[batch, time, embedding]"] --> B["query projection"]
+    A --> C["key projection"]
+    A --> D["value projection"]
+    B --> E["attention scores<br/>Q x K^T"]
+    C --> E
+    E --> F["scale by sqrt(head_dim)"]
+    F --> G["causal mask<br/>block future tokens"]
+    G --> H["softmax"]
+    H --> I["attention weights"]
+    I --> J["weighted sum<br/>weights x V"]
+    D --> J
+    J --> K["mixed context"]
+    K --> L["output projection"]
+
+    subgraph Mask["Causal visibility"]
+        M0["pos 0 sees: 0"]
+        M1["pos 1 sees: 0,1"]
+        M2["pos 2 sees: 0,1,2"]
+        M3["pos 3 sees: 0,1,2,3"]
+    end
+
+    G -. explains .-> Mask
+
+    classDef tensor fill:#e8f3ff,stroke:#2868a8,color:#10233f;
+    classDef attention fill:#fff4dd,stroke:#a86a00,color:#3a2500;
+    classDef mask fill:#ffecec,stroke:#b33a3a,color:#401111;
+
+    class A,K,L tensor;
+    class B,C,D,E,F,H,I,J attention;
+    class G,M0,M1,M2,M3 mask;
+What You Should Be Able to Explain
+Why attention exists (tokens need to see context)
+What Query, Key, and Value mean
+Why the causal mask is necessary
+Why multiple heads can capture different patterns
+
+=== 06 TRANSFORMER BLOCKS ===
+
+Transformer Blocks: The Repeating Unit
+Attention alone isn't enough. After tokens gather context from each other, something needs to
+think
+about that information — to transform it into something more useful.
+That's where the
+transformer block
+comes in. It's the core repeating unit of every GPT-style model. Our tiny model stacks a few of them. GPT-4 stacks 96.
+Where This Lives
+app/block.py
+app/feedforward.py
+What a Block Does
+Each transformer block has two parts that run in sequence:
+Self-attention:
+tokens look at each other and gather context
+Feed-forward network:
+each token independently transforms its information
+After both parts, the output flows to the next block (or to the final output if this is the last block).
+The Feed-Forward Network
+Think of it as a small neural network that runs on each token individually. It doesn't look at neighboring tokens — it just takes what attention collected and does further computation on it.
+The structure is:
+Linear layer (expand 4x)
+GELU activation (adds non-linearity)
+Linear layer (compress back)
+Dropout (randomly zeros some values to prevent overfitting)
+The expansion to 4x is a convention from the original Transformer paper. It gives the network room to compute more complex features before compressing back.
+Residual Connections: Keep the Original Signal
+Here's a subtle but important trick. After each sub-layer (attention and feed-forward), we
+add the original input back
+:
+output = original_input + attention(original_input)
+output = output + feedforward(output)
+This is called a
+residual connection
+(or skip connection).
+Why does it matter? Without it, information from early layers might get lost or distorted as it passes through many blocks. With it, each block only needs to learn the
+change
+(residual), not rebuild everything from scratch. This makes deep networks much easier to train.
+Analogy: you're taking notes while reading. Instead of rewriting everything from scratch each time, you just add highlights and annotations. The core text is always there.
+Layer Normalization: Keeping Values Stable
+Before passing data to attention and feed-forward, we apply
+layer normalization
+. It rescales the values so they stay in a well-behaved range.
+Without this, numbers can grow very large or shrink very small as they pass through many layers. Normalization keeps training stable.
+One Block, Full Picture
+input
+  ↓
+layer norm
+  ↓
+self-attention
+  ↓
+  + (add original input back)
+  ↓
+layer norm
+  ↓
+feed-forward network
+  ↓
+  + (add again)
+  ↓
+output (goes to next block)
+What You Should Be Able to Explain
+What the two sub-layers in a block are
+Why residual connections exist
+What layer normalization does
+Why the feed-forward network processes each token independently (while attention processes them together)
+
+=== 07 FORWARD PASS ===
+
+The Forward Pass: Putting It All Together
+The
+forward pass
+is what happens when you feed text into the model and it produces a prediction. All the pieces we've seen — embeddings, position, attention, feed-forward — run in sequence.
+Where This Lives
+app/model.py
+Step by Step
+The
+MiniGPT
+model runs these steps every time it processes a sequence:
+1. Token Embedding
+Each token ID is looked up in the embedding table and replaced with a learned vector.
+[32, 17, 51] → [[0.12, -0.44, ...], [-0.73, 0.21, ...], [0.04, 0.67, ...]]
+2. Positional Embedding
+Position vectors are added to token vectors. This tells the model where each token is in the sequence.
+token vector + position vector → combined vector
+3. Transformer Blocks
+The combined vectors pass through each block (attention → feed-forward). Each block refines the representation.
+4. Final Layer Normalization
+The output is normalized one more time for stability.
+5. Output Projection
+The final vectors are projected from
+embedding_dim
+down to
+vocab_size
+. This gives one score per possible next character — the
+logits
+.
+Shape Example
+Let's trace the shapes through a real example:
+Input token IDs:          [16, 64]     (16 examples, 64 tokens each)
+After token embedding:    [16, 64, 48] (each token → 48-dim vector)
+After position embedding: [16, 64, 48] (same shape, but position added)
+After transformer blocks: [16, 64, 48] (same shape, information refined)
+After output projection:  [16, 64, 54] (each token → 54 scores, one per character)
+That final
+[16, 64, 54]
+tensor holds
+one prediction per position per example
+. At position 10, the model's guess about what character comes at position 11 is the scores at
+[:, 10, :]
+.
+What
+block_size
+Limits
+block_size
+is the maximum sequence length the model accepts. If you feed in a sequence longer than
+block_size
+, the model rejects it.
+During inference, when the generated sequence grows longer than
+block_size
+, the oldest tokens are dropped so we always pass in a valid-length window.
+What You Should Be Able to Explain
+The five steps of the forward pass in order
+What logits are and why there are
+vocab_size
+of them per position
+What the output shape
+[batch, time, vocab_size]
+means
+Why
+block_size
+matters
+
+=== 08 LOSS AND BACKPROPAGATION ===
+
+Loss and Backpropagation: How the Model Learns from Mistakes
+The model makes a guess. The guess is wrong. The model adjusts. Repeat millions of times.
+That's training, at a high level. But how does the model actually adjust? That's what
+loss
+and
+backpropagation
+are for.
+Where This Lives
+app/loss.py
+app/train.py
+What Is Loss?
+Loss is a number that measures how wrong the model's prediction was.
+The model produces logits — a score for every possible next character. The correct next character is known (it's in the training data).
+Cross-entropy loss
+compares those scores against the correct answer:
+If the model gave a high score to the correct character:
+low loss
+(good job)
+If the model gave a low score to the correct character:
+high loss
+(bad guess)
+Loss is a single number. Lower is better. The goal of training is to make this number go down.
+A Scoring Analogy
+Imagine a multiple-choice quiz where you must rank your confidence in each answer from 0 to 100. You spread your confidence across all choices. The scoring penalizes you more harshly the more confidence you placed on wrong answers.
+Cross-entropy works the same way: it rewards the model for putting high probability on the right character, and penalizes it for spreading probability to wrong ones.
+What Is Backpropagation?
+After computing the loss, we need to answer one question:
+Which parameters caused this error, and by how much?
+Backpropagation
+traces the loss backwards through the entire network — from the output projection, through the transformer blocks, through the embeddings — and calculates a
+gradient
+for every single parameter.
+A gradient tells us: "if you increase this weight slightly, does the loss go up or down, and by how much?"
+Then the optimizer uses those gradients to update the weights:
+weight = weight - learning_rate × gradient
+A small
+learning_rate
+(like
+0.003
+) means we adjust weights gently. Too large and training becomes unstable. Too small and it learns too slowly.
+The Optimizer: AdamW
+This project uses
+AdamW
+— a popular optimizer that improves on basic gradient descent by keeping track of momentum and adapting the learning rate per parameter. You don't need to understand all its math right now. The key idea is:
+AdamW takes gradients and figures out smart weight updates.
+NaN: When Training Goes Wrong
+Sometimes the loss becomes
+NaN
+(Not a Number). This happens when numbers overflow or explode during computation. The training loop stops immediately if this happens.
+A
+NaN
+loss is a sign of numerical instability — usually from a learning rate that's too high or a poorly configured model.
+What You Should Be Able to Explain
+What loss measures
+Why lower loss means better predictions
+What a gradient is
+What backpropagation does
+Why the learning rate matters
+
+=== 09 TRAINING LOOP ===
+
+The Training Loop: Where Learning Happens
+All the pieces are in place. The training loop ties them together and runs the whole process from start to finish.
+Where This Lives
+app/train.py
+What Happens, Step by Step
+Run
+python app/train.py
+and this is what executes:
+Load the dataset:
+read
+app/dataset.txt
+into memory
+Build the vocabulary:
+collect every unique character from the text
+Encode the text:
+convert all characters to token IDs
+Create the model:
+build a fresh
+MiniGPT
+with random weights
+Create the optimizer:
+set up AdamW to handle weight updates
+Then the loop begins:
+Sample a random batch:
+pick random windows of text from the encoded dataset
+Forward pass:
+feed the batch through the model to get logits
+Compute loss:
+compare predictions against the correct next tokens
+Backpropagate:
+trace the error back through the network, compute gradients
+Update weights:
+AdamW adjusts every parameter slightly
+Log progress:
+print the current loss
+Repeat:
+go back to step 6
+After all steps complete:
+Save a checkpoint:
+store the model weights, vocabulary, and config to disk
+Diagram
+flowchart TD
+    A["app/dataset.txt<br/>chat examples"] --> B["dataset.py<br/>load_dataset"]
+    B --> C["tokenizer.py<br/>build vocabulary"]
+    C --> D["token ids"]
+    D --> E["batch.py<br/>build x and y"]
+    E --> F["model.py<br/>MiniGPT forward"]
+    F --> G["logits<br/>[batch, time, vocab]"]
+    G --> H["loss.py<br/>cross entropy"]
+    H --> I["loss.backward"]
+    I --> J["AdamW optimizer step"]
+    J --> K{"more steps?"}
+    K -- yes --> E
+    K -- no --> L["checkpoint.py<br/>save .pt"]
+
+    classDef data fill:#e8f3ff,stroke:#2868a8,color:#10233f;
+    classDef model fill:#f3edff,stroke:#7046aa,color:#24163d;
+    classDef train fill:#fff4dd,stroke:#a86a00,color:#3a2500;
+
+    class A,B,C,D data;
+    class F,G model;
+    class E,H,I,J,K,L train;
+The Training Log
+While training runs, you'll see output like this:
+[INFO] train: vocabulary size=54
+[INFO] train: sequence length=3791
+[INFO] train: learning rate=0.003
+[INFO] train: step=10  loss=3.1204
+[INFO] train: step=20  loss=2.6870
+[INFO] train: step=30  loss=2.4103
+Loss should generally go down. It might be noisy — jumping around a little — but the trend should be downward.
+What Is a Batch?
+Instead of training on one example at a time, we train on many simultaneously. A
+batch
+is a group of training examples processed together. This is faster and produces more stable gradients.
+In
+app/config.py
+:
+batch_size = 16   (process 16 examples at once)
+block_size = 64   (each example is 64 characters long)
+Important Settings in
+app/config.py
+Setting
+What it controls
+block_size
+How many characters the model can see at once
+embedding_dim
+Size of each token's vector
+num_heads
+Number of attention heads
+num_layers
+How many transformer blocks to stack
+max_steps
+How many training updates to run
+learning_rate
+How aggressively weights are updated
+Try changing
+max_steps
+to train longer and watch if loss goes lower.
+Why the Dataset Is Small
+Training on a small dataset is intentional. The goal is study, not power. Small data = fast training = easy to experiment and observe. You can retrain from scratch in under a minute.
+What You Should Be Able to Explain
+The sequence of steps in one training iteration
+What a batch is and why we use them
+Why loss going down means the model is improving
+What you'd change to train longer or with a bigger model
+
+=== 11 CHECKPOINT AND WEIGHTS ===
+
+Checkpoint and Weights: Saving What the Model Learned
+Training takes time. Inference needs the result. A
+checkpoint
+is the bridge between them — a file that stores everything the model learned.
+Where This Lives
+app/checkpoint.py
+What Gets Saved
+The checkpoint stores three things:
+1. Model Weights (
+model_state
+)
+These are the actual learned numbers — every embedding value, every attention weight, every feed-forward parameter. Millions of small numbers, all tuned by training to minimize loss.
+This is the model's "knowledge." Without it, the model is just random noise.
+2. Vocabulary (
+vocabulary
+)
+The mapping between characters and their token IDs. This is essential because the same character must always map to the same ID during inference.
+If you trained on a vocabulary where
+'a'
+=
+8
+, then at inference time
+'a'
+must still be
+8
+. Otherwise the model reads garbage.
+3. Config (
+config
+)
+The model's shape: how many layers, how big the embedding dimension, how many attention heads. Without this, you can't rebuild the model structure to load the weights into.
+Where the Checkpoint Goes
+checkpoints/llm_lessons.pt
+This file is excluded from Git (it's in
+.gitignore
+) because it's a runtime artifact — generated by running
+train.py
+, not part of the source code.
+Diagram
+flowchart TD
+    A["Training finished"] --> B["MiniGPT state_dict"]
+    A --> C["Tokenizer vocabulary"]
+    A --> D["ModelConfig"]
+    B --> E["checkpoint dict"]
+    C --> E
+    D --> E
+    E --> F["torch.save"]
+    F --> G["checkpoints/llm_lessons.pt"]
+
+    G --> H["load_checkpoint"]
+    H --> I["restore tokenizer"]
+    H --> J["restore config"]
+    H --> K["create MiniGPT"]
+    K --> L["load model_state"]
+    L --> M["ready for inference"]
+
+    classDef save fill:#fff4dd,stroke:#a86a00,color:#3a2500;
+    classDef artifact fill:#e8f3ff,stroke:#2868a8,color:#10233f;
+    classDef load fill:#e9f8eb,stroke:#2d7a3e,color:#132d18;
+
+    class A,B,C,D,E,F save;
+    class G artifact;
+    class H,I,J,K,L,M load;
+The Analog: Saving a Game
+A checkpoint is like a save file in a video game.
+Model weights
+= your character's stats and inventory (everything learned)
+Vocabulary
+= the key to read the save file correctly
+Config
+= the game settings needed to load the level
+Without the save file, you'd have to start from scratch every time.
+Atomic Saving: Protecting Against Corruption
+save_checkpoint()
+doesn't write directly to the final file. It writes to a temporary file first, then renames it to the real destination. This is called an
+atomic save
+.
+Why? If the program crashes halfway through writing, you don't end up with a half-written, corrupted checkpoint. The old file stays intact until the new one is complete.
+What Happens If the Checkpoint Is Missing
+If you run inference without training first, the loader will raise an error. It won't silently produce garbage — it fails clearly so you know what went wrong.
+What You Should Be Able to Explain
+Why a checkpoint needs to store vocabulary alongside model weights
+Why config must also be saved
+What atomic saving protects against
+Where the checkpoint file lives and why it's not in Git
+
+=== 10 INFERENCE ===
+
+Inference: The Model Answers Your Question
+Training is over. Weights are saved. Now you want to actually use the model.
+Inference
+is the process of using a trained model to generate text. No more learning happens here — just predicting, one character at a time.
+Where This Lives
+app/infer.py
+How to Run It
+Ask a pizza question:
+python app/infer.py --prompt "What pizza do you recommend?"
+Ask something outside the training domain:
+python app/infer.py --prompt "What is the capital of France?"
+See the full raw generated conversation:
+python app/infer.py --raw-model --prompt "What pizza do you recommend?"
+The Autoregressive Loop
+The model generates text one character at a time. Here's the full loop:
+Take your prompt:
+"What pizza do you recommend?"
+Format it as a conversation with markers:
+``
+txt Customer: What pizza do you recommend? Assistant:
+``
+Encode to token IDs
+Feed into the model → get logits (scores for each possible next character)
+Pick one character based on those scores (sampling)
+Add it to the sequence
+Go back to step 4 with the longer sequence
+Stop when the model generates
+
+or we hit the max token limit
+This is called
+autoregressive
+generation because each step feeds on the output of the previous one.
+Diagram
+flowchart TD
+    A["User prompt"] --> B["context.py<br/>build_chat_context"]
+    B --> C["formatted context<br/>&lt;|user|&gt; ... &lt;|assistant|&gt;"]
+    C --> D["tokenizer.py<br/>encode"]
+    D --> E["checkpoint.py<br/>load model + tokenizer"]
+    E --> F["model.py<br/>MiniGPT"]
+    F --> G["logits for last position"]
+    G --> H["sampling.py<br/>choose_next_token"]
+    H --> I["append token"]
+    I --> J{"generated &lt;|end|&gt;<br/>or max tokens?"}
+    J -- no --> F
+    J -- yes --> K["tokenizer.py<br/>decode"]
+    K --> L["infer.py<br/>extract_assistant_answer"]
+    L --> M["Assistant answer"]
+
+    classDef input fill:#e8f3ff,stroke:#2868a8,color:#10233f;
+    classDef model fill:#f3edff,stroke:#7046aa,color:#24163d;
+    classDef output fill:#e9f8eb,stroke:#2d7a3e,color:#132d18;
+
+    class A,B,C,D input;
+    class E,F,G,H,I,J model;
+    class K,L,M output;
+Two Output Modes
+Normal mode:
+returns only the assistant's answer:
+I recommend the Margherita pizza.
+Raw mode
+(
+--raw-model
+): returns the entire generated conversation transcript:
+Customer:
+What pizza do you recommend?
+Assistant:
+I recommend the Margherita pizza.
+
+Both modes use the same model. The difference is just which part of the output gets shown.
+Why the Output Might Be Weird
+This model is tiny. It was trained for a few minutes on a small pizzeria dataset. If it generates strange text, that's expected and educational.
+Things to inspect if the output is poor:
+How long did training run? (Check
+max_steps
+in
+config.py
+)
+What was the final loss?
+Is the checkpoint fresh?
+Is the
+temperature
+setting high (more random) or low (more predictable)?
+Does the dataset have enough examples of the kind of question you're asking?
+Fixing these things is how you improve an LLM — not by hardcoding answers.
+What You Should Be Able to Explain
+What "autoregressive" means
+Why the model generates one character at a time
+The difference between normal mode and raw mode
+Why output quality depends on training data and model size
+
+=== 12 OPENAI API LAYER ===
+
+The API Layer: Talking to the Model Over HTTP
+The model can answer questions from the command line. But what if you want to build a web app, a chatbot interface, or connect it to other tools?
+That's where the
+API
+comes in. It wraps the model in an HTTP server that anyone can send requests to — just like the real OpenAI API.
+Where This Lives
+app/api.py
+app/schemas.py
+Start the Server
+First, make sure you've trained the model:
+python app/train.py
+Then start the API:
+uvicorn app.api:app --reload
+Check it's alive:
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/v1/models
+curl http://127.0.0.1:8000/v1/models/llm-lessons
+Send a Question
+curl -X POST http://127.0.0.1:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llm-lessons",
+    "messages": [
+      {"role": "user", "content": "What pizza do you recommend?"}
+    ],
+    "temperature": 0.1,
+    "max_tokens": 120
+  }'
+What the Request Looks Like
+{
+  "model": "llm-lessons",
+  "messages": [
+    {"role": "user", "content": "What pizza do you recommend?"}
+  ],
+  "temperature": 0.1,
+    "max_tokens": 120
+}
+temperature controls how random the output is. For this tiny model, the API caps it at 0.5 because higher values usually produce noise. max_tokens is capped at 200 so one request cannot accidentally run thousands of slow character-generation steps.
+What the Response Looks Like
+{
+  "id": "chatcmpl-local",
+  "object": "chat.completion",
+  "model": "llm-lessons",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "I recommend the Margherita pizza."
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}
+This format intentionally mirrors the OpenAI Chat Completions API: model IDs live under /v1/models, chat requests go to /v1/chat/completions, and responses include created, choices, and usage. Usage is approximate here because the study model uses character-level tokens.
+Why This Format Matters
+Real-world apps are built around the OpenAI API format. By following the same shape, our local model becomes a drop-in replacement — useful for testing, privacy-focused apps, or offline environments.
+The API Is Thin By Design
+The API doesn't contain any model logic. It:
+Receives the request
+Validates it
+Calls
+generate_text()
+from
+app/infer.py
+Wraps the result in the response shape
+All intelligence stays in the model pipeline. The API is just a translator between HTTP and inference.
+Explore the Auto-Generated Docs
+FastAPI generates interactive documentation automatically. While the server is running, open:
+http://127.0.0.1:8000/docs
+You can test the API directly from your browser — no
+curl
+needed.
+What You Should Be Able to Explain
+Why an API layer is useful on top of a model
+What
+temperature
+and
+max_tokens
+control
+Why this API format mirrors OpenAI's
+Why the API should not contain model logic
+
+=== 13 LIMITATIONS OF THE MODEL ===
+
+Limitations: Why This Isn't ChatGPT
+LLM Lessons is not a product. It's a study project. Understanding what it
+can't
+do is just as important as understanding what it can.
+What This Model Can't Do
+Answer reliably about topics not in the training data
+Handle long conversations (64-character context window is tiny)
+Use emoji or non-English characters (not in the vocabulary)
+Produce fluent, consistent text (the model is too small)
+Understand the world in any meaningful sense
+Call APIs, search the web, or remember past sessions
+Why It Doesn't Sound Like ChatGPT
+The gap isn't a bug — it's a scale difference:
+Factor
+LLM Lessons
+ChatGPT-like models
+Parameters
+~tens of thousands
+billions
+Training data
+~4,000 characters
+hundreds of billions of tokens
+Training time
+minutes, on a laptop
+weeks, on thousands of GPUs
+Tokens
+characters
+subword pieces
+Context window
+64 characters
+thousands of tokens
+Instruction tuning
+none
+extensive
+ChatGPT quality comes from an enormous amount of work at every level: data collection, filtering, model design, training infrastructure, instruction tuning (teaching the model to follow instructions), safety systems, and production-grade inference.
+This project implements
+the core mechanics
+. Those mechanics are real — the same architecture, the same training idea, the same inference loop. But quality requires scale.
+Why There Are No Hardcoded Answers
+It might be tempting to make
+app/infer.py
+check "if the user asks about pizza, return this string." But that would defeat the purpose.
+This is a model study. If the model's output is weak, the right response is to understand
+why
+and improve model-related things:
+More diverse training examples
+More training steps
+Bigger model (more layers, wider embeddings)
+Lower temperature for more consistent output
+Better prompt format matching the training data
+Hardcoding answers would hide the model's actual behavior. We want to see it honestly.
+The Real Lesson
+The architecture of GPT-style models is learnable. The mechanics — tokenization, embeddings, attention, loss, backpropagation, inference — are all visible in this small codebase.
+What you build here is a foundation. Everything in ChatGPT, Claude, Gemini, and Llama is an extension of these same ideas, just at a larger scale.
+
+=== 14 FILE BY FILE LESSONS ===
+
+File-by-File Lessons
+Now that you understand the concepts, let's connect them to actual code.
+Each lesson here matches one source file. The goal isn't just to know
+what
+a file does — it's to understand
+why
+it exists and
+what question
+it answers inside a GPT-style system.
+1. The Training Data
+File:
+app/dataset.txt
+What You're Learning
+The model learns from examples. This file
+is
+those examples.
+Why It Exists
+A language model can't learn without text to train on. This file contains fictional pizzeria conversations that the model will read thousands of times, learning to predict each next character.
+What to Look For
+Open the file and read a few conversations. Notice:
+Every example uses the same format with
+Customer:
+,
+Assistant:
+, and
+
+markers
+The conversations are short and consistent
+Unknown-domain examples are also included ("I don't know how to help with that") so the model learns to decline gracefully
+Question to Answer
+What happens to the character vocabulary if you add a French sentence with accents like
+é
+or
+ç
+to the dataset?
+2. Loading the Data
+File:
+app/dataset.py
+What You're Learning
+Code should have one job. This file's job: read the text file, check it's valid, return the text.
+Why It Exists
+The training loop shouldn't know about file paths, encoding, or validation.
+dataset.py
+owns that. If the file is missing or empty, it fails loudly before any other work begins.
+Question to Answer
+Why is it better to fail before training starts than to fail halfway through?
+3. Building the Conversation Context
+File:
+app/context.py
+What You're Learning
+The model doesn't understand "chat messages" — it understands a single long string of text. This file converts one into the other.
+Why It Exists
+Before tokenization, messages must be serialized into the exact format the model was trained on:
+Customer:
+What pizza do you recommend?
+Assistant:
+The final
+Assistant:
+without content is the signal: "continue from here as the assistant."
+Try It
+python -m pytest app/test_context.py
+Question to Answer
+What would break if training used
+User:
+markers but inference used
+Customer:
+markers?
+4. Tokenization
+File:
+app/tokenizer.py
+What You're Learning
+Text → numbers. This is the first real transformation in the pipeline.
+Why It Exists
+Neural networks do math, not string operations. The tokenizer builds a vocabulary from the training data and provides two operations:
+encode
+(text → IDs) and
+decode
+(IDs → text).
+Try It
+from app.tokenizer import CharacterTokenizer
+
+tokenizer = CharacterTokenizer.from_text("pizza is good")
+print(tokenizer.encode("pizza"))
+print(tokenizer.decode(tokenizer.encode("pizza")))
+Question to Answer
+If you type a question with an emoji at inference time, what happens and why?
+5. Building Batches
+File:
+app/batch.py
+What You're Learning
+The training task: given some characters, predict the next one. This file builds the actual training pairs.
+Why It Exists
+Training needs input sequences and target sequences. The target is always the input shifted one position forward:
+text:   p i z z a
+input:  p i z z
+target: i z z a
+Position 0 sees
+p
+and must predict
+i
+. Position 1 sees
+p, i
+and must predict
+z
+. And so on.
+Question to Answer
+If
+block_size = 64
+, how many predictions does the model make per training example?
+6. Token Embeddings
+File:
+app/embedding.py
+What You're Learning
+Numbers → vectors. Token IDs are labels; embeddings give them meaning.
+Why It Exists
+Token ID
+32
+isn't meaningfully "close to" ID
+33
+— they're just labels. Embeddings replace each ID with a learned vector of numbers that can capture relationships between characters.
+These vectors start random and get adjusted during training. After training, the embeddings represent something useful about each character's role in the text.
+Question to Answer
+Why does embedding dimension size affect how much the model can represent?
+7. Positional Embeddings
+File:
+app/position.py
+What You're Learning
+The model needs to know where each token is in the sequence.
+Why It Exists
+Without position information, the model would treat "pizza is good" and "good is pizza" identically — they have the same characters in different order.
+Positional embeddings add a unique vector for each position (0, 1, 2, ..., block_size-1). These get added to the token embeddings:
+final vector = token embedding + position embedding
+Question to Answer
+What would go wrong if you doubled a sentence and the model couldn't tell character positions apart?
+8. Self-Attention
+File:
+app/attention.py
+What You're Learning
+The heart of the transformer: how each token looks back at earlier tokens to gather context.
+Why It Exists
+Predicting the next character requires understanding the previous ones. Attention creates a learned mechanism for each token to selectively gather information from earlier positions.
+The causal mask ensures no token peeks at future positions — keeping training honest.
+Try It
+python -m pytest app/test_attention.py
+Question to Answer
+Why would the model perform worse if the causal mask were removed during training?
+9. Feed-Forward Network
+File:
+app/feedforward.py
+What You're Learning
+After attention mixes information across positions, the feed-forward network processes each position independently.
+Why It Exists
+Attention is about
+relationships between tokens
+. Feed-forward is about
+transforming what each token now knows
+. Together, they cover both aspects of processing.
+The network expands to 4× the embedding dimension internally (to compute richer features), then compresses back down.
+Question to Answer
+If attention handles communication between tokens, what does feed-forward handle?
+10. Transformer Block
+File:
+app/block.py
+What You're Learning
+One complete block: attention + feed-forward + residual connections + layer normalization.
+Why It Exists
+A transformer block is the repeating unit of GPT-style models. Our model stacks several of them. Each block sees the output of the previous one and refines it further.
+Question to Answer
+What is the purpose of adding the original input back after each sub-layer (
+hidden = hidden + attention(hidden)
+)?
+11. The Full Model
+File:
+app/model.py
+What You're Learning
+All pieces assembled into one forward pass.
+Why It Exists
+This is the
+MiniGPT
+class. It orchestrates: embeddings → positional embeddings → transformer blocks → final normalization → output projection → logits.
+Try It
+python -m pytest app/test_model.py
+Question to Answer
+Why does the output have
+vocab_size
+scores per position, rather than just one score?
+12. Computing Loss
+File:
+app/loss.py
+What You're Learning
+How the model measures its own prediction error.
+Why It Exists
+Training needs a single number to optimize. Cross-entropy loss compares the model's predicted distribution over characters against the correct next character. Lower = better.
+Question to Answer
+If the model assigned 99% probability to the correct next character, would the loss be high or low?
+13. Sampling
+File:
+app/sampling.py
+What You're Learning
+The model produces scores. This file picks one character from those scores.
+Why It Exists
+Logits must become a single chosen token. At low temperature, the model picks the highest-scoring character (greedy, predictable). At higher temperature, it samples probabilistically (more varied, potentially more creative — or more chaotic).
+Try It
+Run inference with different
+--temperature
+values and notice how the output changes.
+Question to Answer
+Why might very high temperature produce text that looks like random keyboard mashing?
+14. Checkpoints
+File:
+app/checkpoint.py
+What You're Learning
+How trained model state is saved and reloaded.
+Why It Exists
+Training stores weights in memory. Inference needs those same weights later. The checkpoint saves model weights, vocabulary, and config — everything needed to reconstruct and use the model.
+Try It
+Run training and check that
+checkpoints/llm_lessons.pt
+appears. Then run inference without retraining and see that it loads correctly.
+Question to Answer
+Why must the vocabulary be saved alongside the model weights?
+15. Training
+File:
+app/train.py
+What You're Learning
+The complete training orchestration: load data → build model → run the learning loop → save checkpoint.
+Why It Exists
+Training connects everything: dataset, tokenizer, batch builder, model, loss, optimizer, logger, and checkpoint saver. It's the conductor that runs the full orchestra.
+Try It
+python app/train.py
+Watch the loss decrease (generally) over time.
+Question to Answer
+Why does lower training loss not automatically mean the model will answer questions well?
+16. Inference
+File:
+app/infer.py
+What You're Learning
+How a trained model generates text one character at a time.
+Why It Exists
+Inference loads the checkpoint, formats your prompt, runs the autoregressive generation loop, and extracts the assistant's answer. This is where training becomes useful.
+Try It
+python app/infer.py --prompt "What pizza do you recommend?"
+python app/infer.py --raw-model --prompt "What pizza do you recommend?"
+Question to Answer
+Why is the
+--raw-model
+flag useful for studying model behavior?
+17. API
+Files:
+app/api.py
+,
+app/schemas.py
+What You're Learning
+How to expose a local model through an HTTP interface anyone can use.
+Why It Exists
+An API turns the model into a service.
+api.py
+handles routes and HTTP logic.
+schemas.py
+defines the exact shape of requests and responses — matching the OpenAI API format.
+Try It
+uvicorn app.api:app --reload
+Then visit
+http://127.0.0.1:8000/docs
+for interactive documentation.
+Question to Answer
+Why should the API not contain any model logic? What would break if it did?
+18. Tests
+Files:
+app/test_*.py
+What You're Learning
+How to verify that code behaves as expected — and how tests serve as living documentation.
+Why They Exist
+Tests protect the project as you experiment. If you change the tokenizer, the tests tell you immediately whether the rest of the system still works.
+Try It
+python -m pytest
+All tests should pass. If one fails, read the error message — it's a clue about what changed.
+Question to Answer
+How do tests help you understand expected behavior, even before reading the source code?
+
+=== 16 AI FOR YOUNG BUILDERS ===
+
+LLM Lessons for Young Builders
+Uma aula ludica para criancas e adolescentes entenderem, construirem e testarem uma IA pequena de verdade.
+A ideia da aula
+Imagine que vamos montar uma cozinha-laboratorio chamada
+Slice Pizza
+. A nossa IA nao nasce sabendo conversar. Ela aprende lendo exemplos simples sobre uma pizzaria ficticia e praticando uma missao repetida muitas vezes:
+Dado o texto anterior, prever o proximo caractere.
+Essa frase parece pequena, mas e o motor de sistemas GPT. Neste projeto, tudo fica pequeno de proposito para uma pessoa conseguir abrir os arquivos, ler o codigo e enxergar cada etapa.
+Regras da nossa oficina
+O projeto e educativo, nao um produto final.
+As respostas publicas do modelo devem ser em ingles.
+O tema do modelo e a pizzaria ficticia Slice Pizza.
+Quando a pergunta foge do tema, a resposta que queremos ensinar e:
+I do not know how to answer that.
+O modelo deve aprender pelo checkpoint treinado, sem respostas coladas no codigo.
+Mapa da jornada
+dataset
+  -> texto vira tokens
+  -> tokens viram numeros
+  -> numeros viram vetores
+  -> posicao entra na mistura
+  -> atencao olha para o passado
+  -> blocos transformer refinam a informacao
+  -> logits pontuam o proximo caractere
+  -> loss mede o erro
+  -> backpropagation ajusta pesos
+  -> checkpoint guarda o aprendizado
+  -> inferencia gera uma resposta
+  -> API deixa outro programa conversar com a IA
+Etapa 1: Preparar os ingredientes
+Arquivo principal:
+app/dataset.txt
+O dataset é o caderno de receitas da IA. Ele mistura blocos de conhecimento com conversas curtas em inglês, repetidas e organizadas com Customer: e Assistant:.
+Customer:
+What pizza do you recommend?
+Assistant:
+I recommend the Margherita pizza.
+
+Pense no dataset como as frases que uma turma ensina para um colega novo. Se as frases forem claras, o colega entende o padrao. Se forem confusas, ele tambem aprende confusao.
+Atividade:
+abra o dataset e encontre uma pergunta sobre pizza e uma pergunta fora do tema.
+Etapa 2: Transformar conversa em um texto unico
+Arquivo principal:
+app/context.py
+Uma interface de chat parece ter várias mensagens separadas, mas o modelo recebe uma unica sequencia de texto:
+Customer:
+What pizza do you recommend?
+Assistant:
+O ultimo marcador
+Assistant:
+e como dizer: "agora continue daqui como assistente".
+Atividade:
+explique para outra pessoa por que treino e inferencia precisam usar os mesmos marcadores.
+Etapa 3: Quebrar texto em pecinhas
+Arquivo principal:
+app/tokenizer.py
+Computadores nao pensam em letras como nos. Entao o tokenizer transforma cada caractere em um numero:
+"pizza" -> ["p", "i", "z", "z", "a"] -> [32, 17, 51, 51, 8]
+Neste projeto, usamos tokenizer por caractere porque ele e facil de investigar. Modelos grandes usam pedaços de palavras, mas a ideia central e parecida.
+Atividade:
+pense em uma palavra nova. Ela so pode ser codificada se todos os caracteres existirem no vocabulario.
+Etapa 4: Criar desafios de treino
+Arquivo principal:
+app/batch.py
+O batch builder cria pequenos desafios. O alvo e sempre o texto deslocado uma posicao:
+texto:   p i z z a
+input:   p i z z
+target:  i z z a
+Em cada posicao, o modelo tenta adivinhar o proximo caractere.
+Atividade:
+faca esse deslocamento com a palavra
+lab
+.
+Etapa 5: Dar significado aos numeros
+Arquivo principal:
+app/embedding.py
+O numero
+32
+sozinho nao significa "p". Ele e so uma etiqueta. O embedding troca cada etiqueta por uma lista de numeros treinaveis, chamada vetor.
+token id -> vetor aprendido
+No comeco, esses vetores sao aleatórios. Durante o treino, eles mudam para ajudar o modelo a prever melhor.
+Atividade:
+compare isso com transformar nomes de estudantes em crachas com informacoes úteis para uma atividade.
+Etapa 6: Mostrar a ordem das pecinhas
+Arquivo principal:
+app/position.py
+Sem posicao, a frase
+pizza is good
+poderia parecer igual a
+good is pizza
+. O modelo precisa saber onde cada caractere esta.
+vetor final = embedding do token + embedding da posicao
+Atividade:
+escreva duas frases com as mesmas palavras em ordem diferente. O significado mudou?
+Etapa 7: Ensinar a olhar para trás
+Arquivo principal:
+app/attention.py
+A self-attention permite que cada token olhe para tokens anteriores e escolha quais ajudam mais. A mascara causal impede que ele veja o futuro.
+posicao atual pode ver: passado + presente
+posicao atual nao pode ver: futuro
+Isso mantem o treino honesto. Se o modelo visse a resposta antes de tentar, ele estaria colando.
+Atividade:
+explique por que uma prova com gabarito aberto nao mede aprendizado.
+Etapa 8: Repetir o raciocinio em blocos
+Arquivos principais:
+app/feedforward.py
+,
+app/block.py
+,
+app/model.py
+Um bloco transformer combina:
+attention, para misturar contexto entre posicoes
+feed-forward, para transformar a informacao de cada posicao
+normalizacao, para manter os numeros estaveis
+conexoes residuais, para preservar informacao importante
+O
+model.py
+junta tudo: embeddings, posicoes, blocos transformer e camada final de previsao.
+Atividade:
+desenhe o caminho de um token entrando no modelo e saindo como pontuacao para o proximo caractere.
+Etapa 9: Ver as pontuacoes do proximo caractere
+Arquivo principal:
+app/model.py
+O modelo nao responde diretamente com uma letra. Ele produz
+logits
+, que sao pontuacoes para todos os caracteres possiveis do vocabulario.
+proximo caractere:
+  "a" -> 1.2
+  "e" -> 0.4
+  "p" -> 3.8
+Depois, a etapa de sampling escolhe um token a partir dessas pontuacoes.
+Atividade:
+se
+p
+tem a maior pontuacao, qual caractere voce esperaria que fosse escolhido em uma configuracao bem previsivel?
+Etapa 10: Medir o erro
+Arquivo principal:
+app/loss.py
+Loss e a nota do erro. Se o modelo acerta com confianca, a loss fica menor. Se ele aposta errado, a loss aumenta.
+previsao boa -> loss menor
+previsao ruim -> loss maior
+Atividade:
+durante o treino, observe se a loss tende a cair. Ela pode oscilar, e isso faz parte do processo.
+Etapa 11: Aprender com o erro
+Arquivo principal:
+app/train.py
+O treino repete este ciclo:
+pegar batch
+rodar o modelo
+calcular loss
+fazer backpropagation
+ajustar pesos
+mostrar logs
+Backpropagation e o mecanismo que descobre quais pesos precisam mudar para reduzir o erro.
+Comando:
+python app/train.py
+Etapa 12: Guardar o aprendizado
+Arquivo principal:
+app/checkpoint.py
+Depois do treino, o checkpoint salva:
+pesos do modelo
+vocabulario
+configuracao
+Sem vocabulario compativel, os mesmos numeros poderiam significar caracteres diferentes. Por isso o checkpoint precisa guardar mais do que pesos.
+Atividade:
+explique por que salvar apenas os pesos nao basta.
+Etapa 13: Gerar uma resposta
+Arquivos principais:
+app/infer.py
+,
+app/sampling.py
+Na inferencia, o modelo gera um caractere por vez:
+prompt -> modelo escolhe 1 caractere
+texto cresce -> modelo escolhe outro caractere
+repete ate terminar
+Comando:
+python app/infer.py --prompt "What pizza do you recommend?"
+Para estudar o texto completo produzido pelo modelo:
+python app/infer.py --raw-model --prompt "What pizza do you recommend?"
+Etapa 14: Conversar por uma API
+Arquivos principais:
+app/api.py
+,
+app/schemas.py
+A API e uma porta HTTP. Ela nao deve conter logica do modelo. Ela recebe uma requisicao no formato de chat, valida os dados e delega para a inferencia.
+Comando:
+uvicorn app.api:app --reload
+Depois, abra:
+http://127.0.0.1:8000/docs
+Etapa 15: Testar como cientista
+Arquivos principais:
+app/test_*.py
+Testes ajudam a investigar se as regras continuam verdadeiras:
+a mascara causal bloqueia o futuro
+a geracao e autoregressiva
+o checkpoint restaura o modelo
+prompt vazio e rejeitado
+API segue o contrato esperado
+Comando:
+python -m pytest
+Mini roteiro para uma oficina
+Leia o dataset em voz alta.
+Mostre os marcadores
+Customer:
+e
+Assistant:
+.
+Transforme uma palavra em caracteres e IDs.
+Monte input e target deslocados.
+Explique embeddings como vetores que aprendem.
+Mostre que posicao muda significado.
+Explique attention como olhar para o contexto anterior.
+Rode o treino e observe a loss.
+Rode a inferencia e compare respostas.
+Rode os testes e veja o projeto se defender de erros.
+Perguntas de pesquisa
+O que acontece se o dataset tiver poucas frases?
+O que muda se o
+block_size
+aumentar?
+Por que temperatura alta pode deixar a resposta estranha?
+Por que uma IA pequena pode memorizar em vez de generalizar?
+Como o modelo aprende a responder
+I do not know how to answer that.
+sem regra colada no codigo?
+Fechamento
+O LLM Lessons mostra que uma IA conversacional nao e magia. Ela e uma sequencia de transformacoes: texto, tokens, vetores, atencao, previsao, erro, ajuste e repeticao.
+Quando voce entende cada etapa, deixa de apenas usar IA e comeca a investigar como ela funciona.
+
+=== Expanded Real-World GPT Concepts ===
+
+Causal Mask / Masked Self-Attention
+Why it matters: GPT models must not see future tokens while learning the next-token task.
+Beginner explanation: each token may look left, but not right.
+Technical explanation: attention scores above the diagonal are replaced with negative infinity before softmax.
+Visual analogy: a student taking a test while future answers are covered.
+Pseudo-code:
+scores = scores.masked_fill(future_mask, -inf)
+probs = softmax(scores)
+Common mistakes: thinking the mask is only for inference, or thinking it deletes tokens.
+Real GPT use: autoregressive GPTs use causal masking during training and generation.
+
+Softmax and Probabilities
+Why it matters: the model outputs logits, but decoding needs probabilities.
+Beginner explanation: softmax turns raw votes into percentages.
+Technical explanation: exponentiate logits, then divide each value by the total sum.
+Visual analogy: next-token candidates competing for a small trophy.
+Pseudo-code:
+probs = softmax(logits)
+Common mistakes: treating logits as probabilities, or expecting logits to sum to 1.
+Real GPT use: every generated token is selected from a probability distribution derived from logits.
+
+Temperature, Top-K, and Top-P Sampling
+Why it matters: decoding controls whether output is steady or varied.
+Beginner explanation: temperature changes how brave the model is when choosing; top-k and top-p limit the menu of options.
+Technical explanation: logits are divided by temperature, filtered, normalized, then sampled.
+Visual analogy: always ordering the favorite slice, choosing from the top three, or choosing from enough favorites to cover most of the menu.
+Pseudo-code:
+logits = logits / temperature
+logits = keep_top_k_or_top_p(logits)
+next_token = sample(softmax(logits))
+Common mistakes: assuming high temperature always means better creativity, or that top-k and top-p are the same.
+Real GPT use: APIs expose temperature and top-p because they change style without retraining.
+
+Multi-Head Attention
+Why it matters: different heads can learn different relationships in parallel.
+Beginner explanation: several readers inspect the same sentence for different clues.
+Technical explanation: embedding channels are split into heads; attention runs per head; outputs are concatenated.
+Visual analogy: one reader checks order, another checks roles, another checks repeated menu words.
+Pseudo-code:
+heads = [attention_head(x) for head in heads]
+x = concat(heads)
+Common mistakes: assuming each head always has a clear human-readable job.
+Real GPT use: production transformers use many heads per layer to mix context richly.
+
+Positional Encoding / Position Information
+Why it matters: transformers do not naturally know token order.
+Beginner explanation: words need seat numbers.
+Technical explanation: token embeddings are combined with position information.
+Visual analogy: the same students in different chairs create a different classroom layout.
+Pseudo-code:
+x = token_embedding(ids) + position_embedding(positions)
+Common mistakes: thinking attention alone understands sequence order.
+Real GPT use: modern models often use RoPE or related methods for position awareness.
+
+Context Window
+Why it matters: models only see a limited number of tokens at once.
+Beginner explanation: the model has a backpack, not an infinite library.
+Technical explanation: this project keeps the most recent block_size tokens during inference.
+Visual analogy: a conveyor belt where old tokens fall off the left side.
+Pseudo-code:
+context = tokens[-block_size:]
+Common mistakes: saying the model remembers every part of a long conversation.
+Real GPT use: commercial LLMs have larger but finite context windows; RAG can bring relevant information back.
+
+Training Batches and Epochs
+Why it matters: training happens in chunks for speed and stable learning.
+Beginner explanation: the model studies flashcards in small packs.
+Technical explanation: mini-batches are sampled windows; an epoch is a conceptual full pass over the data.
+Visual analogy: batch equals one worksheet set; epoch equals a pass through the textbook.
+Pseudo-code:
+x, y = get_batch(data)
+loss = model(x, y)
+loss.backward()
+optimizer.step()
+Common mistakes: thinking bigger batch size always means better learning.
+Real GPT use: large models train with huge distributed batches for efficiency.
+
+Gradient Descent and Backpropagation
+Why it matters: loss becomes learning through gradients.
+Beginner explanation: if the guess is wrong, adjust the knobs slightly in the helpful direction.
+Technical explanation: backprop computes gradients; the optimizer updates weights.
+Visual analogy: walking downhill in fog by feeling the slope.
+Pseudo-code:
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()
+Common mistakes: thinking backprop stores knowledge directly, or forgetting to zero gradients.
+Real GPT use: pretraining still relies on gradient-based optimization at massive scale.
+
+Tokenization in Real GPTs
+Why it matters: real GPTs use efficient subword pieces instead of only characters.
+Beginner explanation: real tokenizers often use useful word chunks.
+Technical explanation: BPE and SentencePiece learn frequent byte or subword pieces.
+Visual analogy: letters are tiny bricks; subwords are medium useful bricks.
+Examples:
+running -> ["run", "ning"]
+ChatGPT -> ["Chat", "G", "PT"] as a simplified teaching split.
+Pseudo-code:
+tokens = bpe.encode(text)
+Common mistakes: thinking one token always equals one word.
+Real GPT use: production tokenizers reduce sequence length and support multilingual text.
+
+KV Cache
+Why it matters: generation becomes much faster.
+Beginner explanation: the model reuses old attention notes instead of rereading everything.
+Technical explanation: previous keys and values are cached; only the new token's query/key/value is computed and appended.
+Visual analogy: keeping sticky notes from earlier pages while reading the next page.
+Pseudo-code:
+cache.append(k_new, v_new)
+attend(q_new, cache.k, cache.v)
+Common mistakes: thinking KV cache changes the answer instead of mainly changing speed and memory tradeoffs.
+Real GPT use: KV cache is essential for low-latency chatbot inference.
+
+Fine-Tuning vs Pretraining
+Why it matters: it separates the base language-learning phase from task and behavior adaptation.
+Beginner explanation: pretraining is school; fine-tuning is job training; preference tuning is coaching for helpful behavior.
+Technical explanation: a model may be pretrained with next-token prediction, then instruction tuned and preference tuned.
+Pseudo-code:
+pretrain(corpus)
+finetune(instruction_examples)
+Common mistakes: thinking fine-tuning is the same as adding fresh facts.
+Real GPT use: commercial assistants combine pretraining, instruction tuning, safety tuning, and evaluation.
+
+RAG vs Training
+Why it matters: retrieval is not retraining.
+Beginner explanation: RAG lets the model read notes before answering; it does not change the model's brain.
+Technical explanation: question -> embedding -> vector search -> retrieved context -> prompt -> generation.
+Visual analogy: an open-book exam instead of memorizing a whole library.
+Pseudo-code:
+docs = search(embed(question))
+answer = llm(question + docs)
+Common mistakes: saying RAG trains the model, or assuming retrieved text is always correct.
+Real GPT use: production systems use RAG for fresh or private knowledge without retraining.
+
+Embeddings Similarity
+Why it matters: embeddings power semantic search, clustering, recommendations, and RAG.
+Beginner explanation: similar meanings live near each other in vector space.
+Technical explanation: cosine similarity compares vector direction.
+Visual analogy: a map where "car" and "vehicle" are neighboring cities.
+Pseudo-code:
+similarity = dot(a, b) / (norm(a) * norm(b))
+Common mistakes: expecting every embedding dimension to have a clear human label.
+Real GPT use: embeddings are used for retrieval, recommendations, clustering, and semantic matching.
+
+Real Production GPT Optimizations
+Why it matters: big GPT systems need engineering tricks to run fast and affordably.
+Beginner explanation: production GPTs use smaller boxes, parallel ovens, shortcuts, and specialists.
+Lightweight overview:
+Quantization reduces memory by storing weights with fewer bits.
+MoE activates only some expert layers for each token.
+RoPE improves position handling.
+Speculative decoding drafts tokens with a smaller model and verifies them with a larger model.
+Distributed training spreads work across many GPUs.
+Inference optimization reduces latency and cost.
+Common mistake: diving into production tricks before understanding the core loop.
+
+
+

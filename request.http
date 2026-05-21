@@ -1,10 +1,21 @@
 @baseUrl = http://127.0.0.1:8000
 @model = llm-lessons
+@temperature = 0.7
+@maxTokens = 2000
 
-### Health check
+### Health check - expected 200
 GET {{baseUrl}}/health
 
-### Chat completion - pizzeria question
+
+### OpenAI models list - expected 200
+GET {{baseUrl}}/v1/models
+
+
+### OpenAI model retrieve - expected 200
+GET {{baseUrl}}/v1/models/{{model}}
+
+
+### OpenAI chat completion - recommendation - expected 200
 POST {{baseUrl}}/v1/chat/completions
 Content-Type: application/json
 
@@ -16,11 +27,88 @@ Content-Type: application/json
       "content": "What pizza do you recommend?"
     }
   ],
-  "temperature": 0.7,
-  "max_tokens": 500
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
 }
 
-### Chat completion - unknown domain
+
+### OpenAI chat completion - price question - expected 200
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How much does a Margherita pizza cost?"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### OpenAI chat completion - ingredients question - expected 200
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What ingredients are in the Mushroom pizza?"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### OpenAI chat completion - multi-turn conversation - expected 200
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What pizzas do you have?"
+    },
+    {
+      "role": "assistant",
+      "content": "Slice Pizza has Margherita, Pepperoni, Four Cheese, Chicken Catupiry, Portuguese, Vegetarian, Mushroom, and Chocolate pizza."
+    },
+    {
+      "role": "user",
+      "content": "Which one is good for cheese lovers?"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### OpenAI chat completion - greeting reaches model - expected 200
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hello"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": 60
+}
+
+
+### OpenAI chat completion - out of scope skips model - expected 200 with refusal
 POST {{baseUrl}}/v1/chat/completions
 Content-Type: application/json
 
@@ -32,7 +120,159 @@ Content-Type: application/json
       "content": "What is the capital of France?"
     }
   ],
-  "temperature": 0.7,
-  "max_tokens": 80
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
 }
 
+
+### OpenAI chat completion - max_completion_tokens alias - expected 200
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How much is Coke?"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_completion_tokens": 80
+}
+
+
+### Simple /chat endpoint - recommendation - expected 200
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "What pizza do you recommend?",
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### Simple /chat endpoint - full context history - expected 200
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "What drinks do you sell?"
+    },
+    {
+      "role": "assistant",
+      "content": "Slice Pizza sells Coke, Sprite, and Guarana."
+    },
+    {
+      "role": "user",
+      "content": "How much is Coke?"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### Simple /chat endpoint - out of scope - expected 200 with refusal
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "Tell me about Bitcoin.",
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### Validation - empty OpenAI messages - expected 400
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [],
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### Validation - invalid role - expected 422
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "tool",
+      "content": "pizza"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}
+
+
+### Validation - too many max_tokens - expected 422
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What pizza do you recommend?"
+    }
+  ],
+  "temperature": {{temperature}},
+  "max_tokens": 11000
+}
+
+
+### Validation - zero temperature - expected 422
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What pizza do you recommend?"
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": {{maxTokens}}
+}
+
+
+### Validation - unsupported stream mode - expected 422
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "{{model}}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What pizza do you recommend?"
+    }
+  ],
+  "stream": true
+}
+
+
+### Validation - blank simple chat message - expected 400
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "   ",
+  "temperature": {{temperature}},
+  "max_tokens": {{maxTokens}}
+}

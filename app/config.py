@@ -17,11 +17,11 @@ class ModelConfig:
     training locally without needing production-scale hardware.
     """
 
-    block_size: int = 64
-    embedding_dim: int = 48
-    num_heads: int = 4
-    num_layers: int = 2
-    dropout: float = 0.0
+    block_size: int = 256
+    embedding_dim: int = 128
+    num_heads: int = 8
+    num_layers: int = 6
+    dropout: float = 0.1
 
     def to_dict(self) -> dict[str, int | float]:
         return asdict(self)
@@ -29,10 +29,10 @@ class ModelConfig:
 
 @dataclass(frozen=True)
 class TrainingConfig:
-    batch_size: int = 16
-    max_steps: int = 3000
+    batch_size: int = 32
+    max_steps: int = 10000
     learning_rate: float = 3e-3
-    log_every: int = 250
+    log_every: int = 500
     seed: int = 1337
 
     def to_dict(self) -> dict[str, int | float]:

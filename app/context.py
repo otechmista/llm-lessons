@@ -13,6 +13,15 @@ SYSTEM_INSTRUCTION = (
     "pizza recommendations, and the fictional pizzeria story."
 )
 
+# A verbatim excerpt from the end of the training corpus used as a warm-up
+# prefix at inference time. A char-level pretraining model cold-starts in the
+# wrong statistical mode without preceding context; this snippet must match the
+# training text exactly so the model's predictions are anchored to known state.
+INFERENCE_PRIMER = (
+    "Customer: thx\n"
+    "Assistant: You are welcome! Ask me anytime about Slice Pizza.\n\n"
+)
+
 
 @dataclass(frozen=True)
 class ContextMessage:
@@ -36,12 +45,18 @@ def build_chat_context(
             raise ValueError(f"[ERROR] context: unsupported role {message.role!r}")
         if not content:
             raise ValueError("[ERROR] context: message content cannot be empty")
-        blocks.append(f"<|{role}|>\n{content}")
+        if role == "system":
+            continue  # system instruction is baked into the training corpus
+        elif role == "user":
+            blocks.append(f"Customer: {content}")
+        else:
+            blocks.append(f"Assistant: {content}")
 
-    if include_assistant_marker:
-        blocks.append("<|assistant|>")
+    if not include_assistant_marker:
+        return "\n".join(blocks) + "\n"
 
-    return "\n".join(blocks) + "\n"
+    # Trailing space matches the training format "Assistant: <answer>" — no newline
+    return "\n".join(blocks) + "\nAssistant: "
 
 
 def trim_context_to_length(context: str, max_characters: int) -> str:

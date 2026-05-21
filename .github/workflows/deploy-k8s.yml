@@ -1,0 +1,111 @@
+name: Deploy API to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "checkpoints/**"
+      - "requirements.txt"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "k8s/**"
+      - ".github/workflows/deploy-k8s.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DEPLOY_HOST: 62.171.156.26
+  DEPLOY_PORT: 8000
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image name
+        id: image
+        run: echo "image=${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        env:
+          K8S_SSH_PRIVATE_KEY: ${{ secrets.K8S_SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$K8S_SSH_PRIVATE_KEY"
+          mkdir -p ~/.ssh
+          printf "%s" "$K8S_SSH_PRIVATE_KEY" > ~/.ssh/k8s_deploy_key
+          chmod 600 ~/.ssh/k8s_deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Render Kubernetes manifest
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+        run: |
+          sed "s|ghcr.io/otechmista/mini-gpt-study:latest|$IMAGE|g" \
+            k8s/llm-lessons-api.yaml > /tmp/llm-lessons-api.yaml
+
+      - name: Apply manifest on Kubernetes host
+        env:
+          K8S_SSH_USER: ${{ secrets.K8S_SSH_USER }}
+        run: |
+          test -n "$K8S_SSH_USER"
+          scp -i ~/.ssh/k8s_deploy_key /tmp/llm-lessons-api.yaml "$K8S_SSH_USER@$DEPLOY_HOST:/tmp/llm-lessons-api.yaml"
+          ssh -i ~/.ssh/k8s_deploy_key "$K8S_SSH_USER@$DEPLOY_HOST" \
+            "kubectl apply -f /tmp/llm-lessons-api.yaml && kubectl -n llm-lessons rollout status deployment/llm-lessons-api --timeout=180s"
+
+      - name: Print deployed URL
+        run: echo "API deployed at http://${DEPLOY_HOST}:${DEPLOY_PORT}"

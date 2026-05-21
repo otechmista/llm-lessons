@@ -12,46 +12,58 @@ warnings.filterwarnings(
 
 try:
     from .checkpoint import load_checkpoint
-    from .context import ContextMessage, build_chat_context
+    from .context import ContextMessage, INFERENCE_PRIMER, build_chat_context
     from .config import DEFAULT_CHECKPOINT_PATH
     from .logging_utils import log_info
     from .sampling import choose_next_token
 except ImportError:  # pragma: no cover - supports `python app/infer.py`
     from checkpoint import load_checkpoint
-    from context import ContextMessage, build_chat_context
+    from context import ContextMessage, INFERENCE_PRIMER, build_chat_context
     from config import DEFAULT_CHECKPOINT_PATH
     from logging_utils import log_info
     from sampling import choose_next_token
 
 
 def format_chat_prompt(prompt: str) -> str:
-    """Format user text as the conversation pattern seen during training."""
+    """Format user text as the conversation pattern seen during training.
+
+    A short corpus primer is prepended so the character-level model starts
+    in the right statistical context instead of cold-starting mid-document.
+    """
 
     stripped = prompt.strip()
-    if "<|assistant|>" in stripped.lower():
-        return stripped
-    if "<|user|>" in stripped.lower():
-        return f"{stripped}\n<|assistant|>\n"
-    return build_chat_context(
+    if "Assistant:" in stripped:
+        if stripped.startswith(INFERENCE_PRIMER):
+            return stripped
+        return INFERENCE_PRIMER + stripped
+    if "Customer:" in stripped:
+        return INFERENCE_PRIMER + f"{stripped}\nAssistant: "
+    conversation = build_chat_context(
         [ContextMessage(role="user", content=stripped)],
         include_assistant_marker=True,
     )
+    return INFERENCE_PRIMER + conversation
 
 
 def extract_assistant_answer(generated_text: str) -> str:
     """Extract only the assistant response from generated conversation text."""
 
-    marker = "<|assistant|>"
-    lower_text = generated_text.lower()
-    marker_index = lower_text.rfind(marker)
+    import re as _re
+    # Match "Assistant: " (with space) as used in the training corpus
+    marker = "Assistant: "
+    marker_index = generated_text.rfind(marker)
+    if marker_index == -1:
+        # Fallback: match bare "Assistant:" for robustness
+        marker = "Assistant:"
+        marker_index = generated_text.rfind(marker)
     if marker_index == -1:
         return generated_text.strip()
 
-    answer = generated_text[marker_index + len(marker) :]
-    for stop_marker in ("<|end|>", "<|user|>", "<|system|>"):
-        stop_index = answer.lower().find(stop_marker)
-        if stop_index != -1:
-            answer = answer[:stop_index]
+    answer = generated_text[marker_index + len(marker):]
+    # Cut before the next Customer turn to avoid leaking a fabricated follow-up
+    cut = _re.search(r"\nCustomer:", answer)
+    if cut:
+        answer = answer[: cut.start()]
     return answer.strip()
 
 
@@ -126,7 +138,8 @@ def generate_model_text(
                 )
 
             text = tokenizer.decode(generated)
-            if "<|end|>" in text.lower().split("<|assistant|>", maxsplit=1)[-1]:
+            # Stop if the model starts generating a new Customer turn
+            if "\nCustomer:" in text.split("Assistant:")[-1]:
                 break
 
     return tokenizer.decode(generated)

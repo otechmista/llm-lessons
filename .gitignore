@@ -18,6 +18,8 @@ env/
 # Editors and OS files
 .idea/
 .vscode/
+.claude/
+.codex/
 .DS_Store
 Thumbs.db
 

@@ -1,0 +1,16 @@
+.git/
+.github/
+.claude/
+.codex/
+.pytest_cache/
+.ruff_cache/
+.test-output/
+.test-tmp/
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+.env
+.env.*
+docs/
+request.http

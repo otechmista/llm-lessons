@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-lessons
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-lessons-api
+  namespace: llm-lessons
+  labels:
+    app: llm-lessons-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-lessons-api
+  template:
+    metadata:
+      labels:
+        app: llm-lessons-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/otechmista/mini-gpt-study:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-lessons-api
+  namespace: llm-lessons
+  labels:
+    app: llm-lessons-api
+spec:
+  type: ClusterIP
+  externalIPs:
+    - 62.171.156.26
+  selector:
+    app: llm-lessons-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
