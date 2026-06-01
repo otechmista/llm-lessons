@@ -151,6 +151,41 @@ function refreshIcons() {
   }
 }
 
+function pizzaApiBase() {
+  const h = location.hostname;
+  return (h === "localhost" || h === "127.0.0.1")
+    ? "http://localhost:8000"
+    : "https://api.camilomelo.com";
+}
+
+function renderChatStatusBadge(badge, status) {
+  if (!badge) return;
+  badge.classList.remove("is-on", "is-off", "is-checking");
+  badge.classList.add(`is-${status}`);
+  const label = status === "on" ? "demo live" : "demo offline";
+  badge.title = `Slice Pizza ${label}`;
+  badge.setAttribute("aria-label", `Slice Pizza ${label}`);
+  badge.querySelector(".chat-status-text").textContent = label;
+}
+
+async function checkPizzaApiStatus() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+  try {
+    const res = await fetch(pizzaApiBase() + "/health", {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.status === "ok" ? "on" : "off";
+  } catch {
+    return "off";
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 class LessonHeader extends HTMLElement {
   connectedCallback() {
     const info = pageInfo();
@@ -172,7 +207,10 @@ class LessonHeader extends HTMLElement {
           <div class="flex items-center gap-2">
             <button id="pizza-chat-btn" class="inline-flex h-10 items-center gap-2 rounded-xl bg-coral px-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:opacity-90" type="button" title="Live example — chat with the Slice Pizza AI trained in this course">
               <i data-lucide="bot" class="h-4 w-4"></i>
-              <span class="hidden sm:inline"><span translate="no">Slice Pizza</span> · <span class="font-normal opacity-90 text-xs">live demo</span></span>
+              <span class="hidden sm:inline"><span translate="no">Slice Pizza</span> · <span id="header-chat-demo-label" class="font-normal opacity-90 text-xs">demo offline</span></span>
+              <span id="header-chat-api-status" class="chat-status chat-status-compact is-off" aria-live="polite">
+                <span class="chat-status-text">demo offline</span>
+              </span>
             </button>
             <div id="gt-header-widget" style="display:none"></div>
             <select id="lang-select" class="h-10 rounded-xl border border-line bg-white px-3 text-sm font-black text-ink shadow-sm outline-none transition hover:border-honey cursor-pointer">
@@ -277,6 +315,12 @@ class LessonHeader extends HTMLElement {
     });
 
     this.querySelector("#print-button")?.addEventListener("click", () => window.print());
+
+    checkPizzaApiStatus().then((status) => {
+      renderChatStatusBadge(this.querySelector("#header-chat-api-status"), status);
+      const label = this.querySelector("#header-chat-demo-label");
+      if (label) label.textContent = status === "on" ? "demo live" : "demo offline";
+    });
 
     this.querySelector("#pizza-chat-btn")?.addEventListener("click", () => {
       let chat = document.querySelector("pizza-chat");
@@ -971,6 +1015,7 @@ class PizzaChat extends HTMLElement {
   constructor() {
     super();
     this._open = false;
+    this._apiStatus = "off";
     this._welcome = { role: "assistant", content: "Hi! I'm the Slice Pizza AI 🍕 Ask me anything about the menu, prices, or ingredients.\n\n⚠️ English only.\n⚠️ This is a tiny experimental model — it may give wrong or unexpected answers." };
     this._history = this.loadHistory();
   }
@@ -1003,9 +1048,14 @@ class PizzaChat extends HTMLElement {
             <span class="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-coral text-white">
               <i data-lucide="bot" class="h-5 w-5"></i>
             </span>
-            <div>
+            <div class="min-w-0">
               <p class="text-sm font-black text-ink leading-none">Slice Pizza AI</p>
-              <p class="text-xs text-soft mt-0.5">Live demo · <span class="text-coral font-black">EN only</span></p>
+              <div class="mt-1 flex flex-wrap items-center gap-2">
+                <p class="text-xs text-soft leading-none">Slice Pizza · <span id="chat-demo-label" class="font-black text-coral">demo offline</span></p>
+                <span id="chat-api-status" class="chat-status is-off" aria-live="polite">
+                  <span class="chat-status-text">demo offline</span>
+                </span>
+              </div>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -1029,7 +1079,7 @@ class PizzaChat extends HTMLElement {
         </div>
         <form id="chat-form" class="flex gap-2 border-t border-line bg-white p-3" autocomplete="off">
           <input id="chat-input" class="h-10 flex-1 rounded-xl border border-line bg-shell px-3 text-sm font-bold text-ink outline-none transition focus:border-honey" type="text" placeholder="Ask in English…" />
-          <button class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink text-page transition hover:opacity-80" type="submit">
+          <button id="chat-submit" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink text-page transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45" type="submit">
             <i data-lucide="send" class="h-4 w-4"></i>
           </button>
         </form>
@@ -1037,6 +1087,8 @@ class PizzaChat extends HTMLElement {
     `;
 
     refreshIcons();
+    this.updateApiStatusBadge();
+    this.checkApiStatus();
     this.querySelector("#chat-close")?.addEventListener("click", () => this.toggle());
     this.querySelector("#chat-reset")?.addEventListener("click", () => {
       this._history = [this._welcome];
@@ -1086,10 +1138,23 @@ class PizzaChat extends HTMLElement {
   }
 
   apiBase() {
-    const h = location.hostname;
-    return (h === "localhost" || h === "127.0.0.1")
-      ? "http://localhost:8000"
-      : "http://62.171.156.26:8000";
+    return pizzaApiBase();
+  }
+
+  setApiStatus(status) {
+    this._apiStatus = status;
+    this.updateApiStatusBadge();
+  }
+
+  updateApiStatusBadge() {
+    const badge = this.querySelector("#chat-api-status");
+    renderChatStatusBadge(badge, this._apiStatus);
+    const label = this.querySelector("#chat-demo-label");
+    if (label) label.textContent = this._apiStatus === "on" ? "demo live" : "demo offline";
+  }
+
+  async checkApiStatus() {
+    this.setApiStatus(await checkPizzaApiStatus());
   }
 
   chatMessagesForApi() {
@@ -1127,11 +1192,13 @@ class PizzaChat extends HTMLElement {
       });
       const data = await res.json();
       typing?.remove();
+      this.setApiStatus(res.ok ? "on" : "off");
       const reply = data.reply ?? data.choices?.[0]?.message?.content ?? data.response ?? JSON.stringify(data);
       this.addMessage("assistant", reply);
     } catch {
       typing?.remove();
-      this.addMessage("assistant", "⚠️ Could not reach the Slice Pizza API. Make sure the server is running on localhost:8000.");
+      this.setApiStatus("off");
+      this.addMessage("assistant", "Could not reach the Slice Pizza API. Status: off.");
     }
   }
 

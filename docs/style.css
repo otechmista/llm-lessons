@@ -65,6 +65,35 @@ a[role="button"]:active {
   scrollbar-color: #e4ded2 transparent;
 }
 
+.chat-status {
+  align-items: center;
+  border: 0;
+  display: inline-flex;
+  font-size: .62rem;
+  font-weight: 900;
+  gap: .3rem;
+  line-height: 1;
+  padding: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chat-status-compact .chat-status-text {
+  display: none;
+}
+
+.chat-status.is-checking {
+  color: #f06a7a;
+}
+
+.chat-status.is-on {
+  color: #16a36a;
+}
+
+.chat-status.is-off {
+  color: #f06a7a;
+}
+
 .chat-bubble-user {
   background: #202124;
   color: #fffdf8;

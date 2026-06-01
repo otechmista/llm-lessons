@@ -1,4 +1,4 @@
-const CACHE = "llm-lessons-v2";
+const CACHE = "llm-lessons-v3";
 
 const ASSETS = [
   "./",
